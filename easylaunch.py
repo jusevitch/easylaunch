@@ -6,14 +6,14 @@
 # 2. launchFile class
 #   -- dictionary of args with default values
 #   -- dictionary of remaps
-#   -- vector of include classes
-#   -- vector of node classes
+#   -- array of include classes
+#   -- array of node classes
 
 # 3. include class
 #   -- Attributes:
 #       > .file
 #       > .namespace 
-#   -- vector of args which use the default value
+#   -- array of args which use the default value
 #   -- dict of args which use custom values
 
 # 4. node class
@@ -24,14 +24,14 @@
 #       > .launch-prefix
 #       > .output
 #       > .namespace
-#   -- Vector of parameters which use default arg values
+#   -- array of parameters which use default arg values
 #   -- dict of parameters which use custom values
 
 # 5. Group class?
 
 # !!! USE THE KEYWORDS USED IN THE XML FILES! (E.g. use pkg for package, ns for namespace, etc)
 
-
+import copy
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
@@ -78,7 +78,7 @@ class launchFile:
             print('No default arg elements / Invalid arg elements.')
         
         ## Create include elements
-        if len(self.include) > 0:
+        if self.include is not None and len(self.include) > 0:
             # Iterate through each include element
             for i in range(len(self.include)):
                 # Set the file and ns attributes
@@ -90,9 +90,9 @@ class launchFile:
                 if self.include[i].defarg is not None and len(self.include[i].defarg) > 0:
                     for j in range(len(self.include[i].defarg)):
                         if self.include[i].defarg[j] in list(self.arg.keys()):
-                            ET.SubElement(temp_include, 'arg', {'name': self.include.defarg[j], 'value': '$(arg ' + self.include.defarg[j] + ')'})
+                            ET.SubElement(temp_include, 'arg', {'name': self.include[i].defarg[j], 'value': '$(arg ' + self.include[i].defarg[j] + ')'})
                         else:
-                            print('Default arg ' + self.include.defarg[j] + ' not listed in default launchfile.arg dict')
+                            print('Default arg ' + self.include[i].defarg[j] + ' not listed in default launchfile.arg dict')
                 else:
                     print('Default args are "None" or empty')
                     
@@ -107,7 +107,7 @@ class launchFile:
         ## Create node elements
         if len(self.node) > 0:
             for i in range(len(self.node)):
-                temp_node = ET.SubElement(launch, 'node', {'name': self.node[i].name, 'pkg': self.node[i].pkg, 'type': self.node.type})
+                temp_node = ET.SubElement(launch, 'node', {'name': self.node[i].name, 'pkg': self.node[i].pkg, 'type': self.node[i].type})
                 if self.node[i].launch_prefix is not None:
                     temp_node.set('launch_prefix', self.node[i].launch_prefix)
                 
@@ -152,20 +152,24 @@ class include:
         self.arg = arg # Dict
 
     def copy(self, number_copies=1, ns_array=None):
-        if ns_array is None:
-            include_list = [self for i in range(number_copies)]
-            for i in number_copies:
+        if self.ns is None:
+            raise ValueError('Value of "ns" is None. Set your include "ns" variable. Copying include elements without changing the namespace will cause problems.')
+        elif ns_array is None:
+            include_list = [copy.deepcopy(self) for i in range(number_copies)]
+            for i in range(number_copies):
                 include_list[i].ns = self.ns + str(i + 1)
             return include_list
         elif number_copies <= len(ns_array):
             if number_copies < len(ns_array):
                 print('WARNING: number_copies < len(ns_array) for copy operation involving the include ' + self.file + '. Not all namespaces will be used.')
-            include_list = [self for i in range(number_copies)] 
+            include_list = [copy.deepcopy(self) for i in range(number_copies)] 
             for i in range(number_copies):
                 include_list[i].ns = ns_array[i]
             return include_list
-        else:
+        elif number_copies > len(ns_array):
             raise ValueError('Value of "number_copies" is greater than length of "ns_array". Aborting.')
+        else:
+            raise ValueError('Something really bad happened. Check your ns_array variable.')
 
 
 
@@ -183,14 +187,14 @@ class node:
 
     def copy(self, number_copies=1, name_array=None):
         if name_array is None:
-            node_list = [self for i in range(number_copies)]
+            node_list = [copy.deepcopy(self) for i in range(number_copies)]
             for j in range(number_copies):
                 node_list[j].name = self.name + str(j + 1)
             return node_list 
         elif number_copies <= len(name_array):
             if number_copies < len(name_array):
                 print('WARNING: number_copies < len(name_array) for copy operation involving the node ' + self.name + '. Not all names will be used.')
-            node_list = [self for i in range(number_copies)]
+            node_list = [copy.deepcopy(self) for i in range(number_copies)]
             for i in range(number_copies):
                 node_list[i].name = name_array[i]
             return node_list
