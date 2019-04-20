@@ -16,7 +16,7 @@ a convenient manner. So I decided to write my own.
 
 The easylaunch module provides the following capabilities:
 1. An abbreviated syntax for writing launch files
-2. Functions for easily making copies of include elenents and node elements
+2. Functions for easily making copies of include elements and node elements
 3. Automatic XML file generation
 
 ## Quick Examples:
