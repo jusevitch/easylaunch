@@ -37,7 +37,7 @@ import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
 class launchFile:
-    def __init__(self, arg=None, remap=None, include=None, node=None):
+    def __init__(self, arg={}, remap={}, include=[], node=[]):
         self.arg = arg # Dictionary of {name: default} pairs
         self.remap = remap
         self.include = include 
@@ -110,7 +110,8 @@ class launchFile:
             for i in range(len(self.node)):
                 temp_node = ET.SubElement(launch, 'node', {'name': self.node[i].name, 'pkg': self.node[i].pkg, 'type': self.node[i].type})
                 if self.node[i].launch_prefix is not None:
-                    temp_node.set('launch_prefix', self.node[i].launch_prefix)
+                    # Note the difference between 'launch-prefix' (XML) and 'launch_prefix' (Python, which doesn't allow the dash in variable names)
+                    temp_node.set('launch-prefix', self.node[i].launch_prefix)
                 
                 if self.node[i].output is not None:
                     temp_node.set('output', self.node[i].output)
@@ -146,7 +147,7 @@ class launchFile:
 
 
 class include:
-    def __init__(self, file=None, ns=None, defarg=None, arg=None):
+    def __init__(self, file=None, ns=None, defarg=[], arg={}):
         self.file = file
         self.ns = ns
         self.defarg = defarg # Array of strings
@@ -154,7 +155,8 @@ class include:
 
     def copy(self, number_copies=1, ns_array=None):
         if self.ns is None:
-            raise ValueError('Value of "ns" is None. Set your include "ns" variable. Copying include elements without changing the namespace will cause problems.')
+            include_list = [copy.deepcopy(self) for i in range(number_copies)]
+            return include_list
         elif ns_array is None:
             include_list = [copy.deepcopy(self) for i in range(number_copies)]
             for i in range(number_copies):
@@ -176,7 +178,7 @@ class include:
 
 
 class node:
-    def __init__(self, name, pkg, type, launch_prefix=None, output=None, ns=None, defparam=None, param=None):
+    def __init__(self, name, pkg, type, launch_prefix=None, output=None, ns=None, defparam=[], param={}):
         self.name = name
         self.pkg = pkg
         self.type = type
