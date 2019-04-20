@@ -1,5 +1,6 @@
-# EasyLaunch python library
-# Written by James Usevitch, University of Michigan
+# EasyLaunch python module
+# Written by James Usevitch
+# Aerospace Department, University of Michigan
 
 # Overall structure:
 # 1. XML Version at top
