@@ -33,6 +33,7 @@
 
 
 import xml.etree.ElementTree as ET
+from xml.dom import minidom
 
 class launchFile:
     def __init__(self, arg=None, remap=None, include=None, node=None):
@@ -41,9 +42,33 @@ class launchFile:
         self.include = include 
         self.node = node
 
-    def write(self, filename="./launchFile.launch", verbose=False): # To do: put output text inside if statements controlled by verbose bool
-        launch = ET.Element("launch")
+    # Source for prettify function: https://bip.weizmann.ac.il/course/python/PyMOTW/PyMOTW/docs/xml/etree/ElementTree/create.html
+    # Link works as of 4/20/19
+    def prettify(self, element):
+        # Returns an XML string with 'pretty' formatting
+        # You can print the string to screen or to file
+        rough_string = ET.tostring(element, 'utf-8')
+        reparsed = minidom.parseString(rough_string)
+        return reparsed.toprettyxml(indent="  ")
 
+    # Creates a
+    def write(self, filename="./launchFile.launch", prettyprint=True, verbose=False): 
+        launch = self.getLaunchElement(verbose)
+        if prettyprint:
+            print(self.prettify(launch), file=open(filename, "w"))
+        else:
+            print('<?xml version="1.0"?>', file=open(filename, "w"))
+            print(ET.tostring(launch).decode('UTF-8'), file=open(filename, "a"))
+
+    # Prints a preview of the launch file to screen
+    def print(self, verbose=False):
+        launch = self.getLaunchElement(verbose)
+        print(self.prettify(launch))
+
+
+    def getLaunchElement(self, verbose=False): # To do: put output text inside if statements controlled by verbose bool
+        launch = ET.Element("launch")
+        
         ## Create arg elenents
         if type(self.arg) is dict and len(self.arg) > 0:
             arg_keys = list(self.arg.keys())
@@ -62,29 +87,56 @@ class launchFile:
                     temp_include.set('ns', self.include[i].ns)
                 
                 # Set the arg elements with default values
-                if self.include[i].defargs is not None and len(self.include[i].defargs) > 0:
-                    for j in range(len(self.include[i].defargs)):
-                        if self.include[i].defargs[j] in list(self.arg.keys()):
-                            ET.SubElement(temp_include, 'arg', {'name': self.include.defargs[j], 'value': '$(arg ' + self.include.defargs[j] + ')'})
+                if self.include[i].defarg is not None and len(self.include[i].defarg) > 0:
+                    for j in range(len(self.include[i].defarg)):
+                        if self.include[i].defarg[j] in list(self.arg.keys()):
+                            ET.SubElement(temp_include, 'arg', {'name': self.include.defarg[j], 'value': '$(arg ' + self.include.defarg[j] + ')'})
                         else:
-                            print('Default arg ' + self.include.defargs[j] + ' not listed in default launchfile.arg dict')
+                            print('Default arg ' + self.include.defarg[j] + ' not listed in default launchfile.arg dict')
                 else:
                     print('Default args are "None" or empty')
                     
                 # Set the arg elements which are not default values
-                if self.include[i].args is not None and len(self.include[i].args) > 0:
-                    temp_keys = list(self.include[i].args.keys())
+                if self.include[i].arg is not None and len(self.include[i].arg) > 0:
+                    temp_keys = list(self.include[i].arg.keys())
                     for k in range(len(temp_keys)):
-                        ET.SubElement(temp_include, 'arg', {'name': temp_keys[k], 'value': self.include[i].args[temp_keys[k]]})
+                        ET.SubElement(temp_include, 'arg', {'name': temp_keys[k], 'value': self.include[i].arg[temp_keys[k]]})
         else:
             print('No include elements.')
         
         ## Create node elements
         if len(self.node) > 0:
             for i in range(len(self.node)):
-                temp_node = ET.SubElement(launch, 'node', {'name': self.node[i].name})
+                temp_node = ET.SubElement(launch, 'node', {'name': self.node[i].name, 'pkg': self.node[i].pkg, 'type': self.node.type})
+                if self.node[i].launch_prefix is not None:
+                    temp_node.set('launch_prefix', self.node[i].launch_prefix)
+                
+                if self.node[i].output is not None:
+                    temp_node.set('output', self.node[i].output)
+
+                if self.node[i].ns is not None:
+                    temp_node.set('ns', self.node[i].ns)
+
+                # Set the default param elements
+                if self.node[i].defparam is not None and len(self.node[i].defparam) > 0:
+                    for j in range(len(self.node[i].defparam)):
+                        if self.node[i].defparam[j] in list(self.arg.keys()):
+                            ET.SubElement(temp_node, 'param', {'name': self.node[i].defparam[j], 'value': '$(arg ' + self.node[i].defparam[j] + ')'})
+                        else:
+                            print('Default param ' + self.node[i].defparam[j] + ' not listed in default launchfile.arg dict')
+                else:
+                    print('Default params are "None" or empty')
+
+                # Set the param elements which are not default values
+                if self.node[i].param is not None and len(self.node[i].param) > 0:
+                    temp_keys = list(self.node[i].param.keys())
+                    for k in range(len(temp_keys)):
+                        ET.SubElement(temp_node, 'param', {'name': temp_keys[k], 'value': self.node[i].param[temp_keys[k]]})
         else:
             print('No (standalone) node elements. (Other nodes may be inside include files)')
+        
+        return launch
+
 
 
 #   def print(self):
@@ -93,11 +145,11 @@ class launchFile:
 
 
 class include:
-    def __init__(self, file=None, ns=None, defargs=None, args=None):
+    def __init__(self, file=None, ns=None, defarg=None, arg=None):
         self.file = file
         self.ns = ns
-        self.defargs = defargs
-        self.args = args
+        self.defarg = defarg # Array of strings
+        self.arg = arg # Dict
 
     def copy(self, number_copies=1, ns_array=None):
         if ns_array is None:
@@ -119,12 +171,15 @@ class include:
 
 
 class node:
-    def __init__(self, name, pkg, Type, launch_prefix=None, output=None, repetitions = None):
+    def __init__(self, name, pkg, type, launch_prefix=None, output=None, ns=None, defparam=None, param=None):
         self.name = name
         self.pkg = pkg
-        self.type = Type
+        self.type = type
         self.launch_prefix = launch_prefix
         self.output = output
+        self.ns = ns
+        self.defparam = defparam # Array of strings
+        self.param = param # Dict
 
     def copy(self, number_copies=1, name_array=None):
         if name_array is None:
