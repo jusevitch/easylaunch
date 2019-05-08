@@ -27,6 +27,7 @@
 #       > .namespace
 #   -- array of parameters which use default arg values
 #   -- dict of parameters which use custom values
+#   -- dict of rosparam values which should be represented as <rosparam param="name"> text </rosparam>
 
 # 5. Group class?
 
@@ -109,6 +110,8 @@ class launchFile:
         if len(self.node) > 0:
             for i in range(len(self.node)):
                 temp_node = ET.SubElement(launch, 'node', {'name': self.node[i].name, 'pkg': self.node[i].pkg, 'type': self.node[i].type})
+                if self.node[i].args is not None:
+                    temp_node.set('args', self.node[i].args)
                 if self.node[i].launch_prefix is not None:
                     # Note the difference between 'launch-prefix' (XML) and 'launch_prefix' (Python, which doesn't allow the dash in variable names)
                     temp_node.set('launch-prefix', self.node[i].launch_prefix)
@@ -134,6 +137,13 @@ class launchFile:
                     temp_keys = list(self.node[i].param.keys())
                     for k in range(len(temp_keys)):
                         ET.SubElement(temp_node, 'param', {'name': temp_keys[k], 'value': self.node[i].param[temp_keys[k]]})
+                
+                # Set the rosparam elements
+                if self.node[i].rosparam is not None and len(self.node[i].rosparam) > 0:
+                    temp_keys = list(self.node[i].rosparam.keys())
+                    for k in range(len(temp_keys)):
+                        temp_element = ET.SubElement(temp_node, 'rosparam', {'param': temp_keys[k]})
+                        temp_element.text = self.node[i].rosparam[temp_keys[k]]
         else:
             print('No (standalone) node elements. (Other nodes may be inside include files)')
         
@@ -178,15 +188,17 @@ class include:
 
 
 class node:
-    def __init__(self, name, pkg, type, launch_prefix=None, output=None, ns=None, defparam=[], param={}):
+    def __init__(self, name, pkg, type, args=None, launch_prefix=None, output=None, ns=None, defparam=[], param={}, rosparam={}):
         self.name = name
         self.pkg = pkg
         self.type = type
+        self.args = args
         self.launch_prefix = launch_prefix
         self.output = output
         self.ns = ns
         self.defparam = defparam # Array of strings
         self.param = param # Dict
+        self.rosparam = rosparam # Dict
 
     def copy(self, number_copies=1, name_array=None):
         if name_array is None:
