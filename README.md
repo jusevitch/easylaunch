@@ -1,6 +1,8 @@
 # Easy Launch
 A simple Python module for generating repetitive ROS launch files.
 
+[![Project Status: WIP – Initial development is in progress, but there has not yet been a stable, usable release suitable for the public.](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#wip)
+
 The purpose of this module is to make writing large, repetitive ROS launch files as painless as possible. 
 Creating large ROS XML launch files by hand can be tedious and frustrating, especially when many of the include elements or node
 elements are essentially copies of each other with a few small changes to names or parameters. 
